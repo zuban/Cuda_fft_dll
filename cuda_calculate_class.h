@@ -29,7 +29,7 @@ class cuda_calculate_class
 public:
 	const char* cuda_get_error();
 	const char* cuda_get_error_str();
-	bool Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,Complex *zArray);
+	bool Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,Complex *zArrayin,Complex *zArrayout);
 	cuda_calculate_class();
 	
 private:

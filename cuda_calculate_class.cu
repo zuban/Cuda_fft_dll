@@ -1,4 +1,5 @@
 ﻿#include <cuda_runtime.h>
+
 #include <cufft.h>
 #include "cuda_calculate_class.h"
 #include <helper_functions.h>
@@ -459,7 +460,7 @@ void __global__  cuda_parallel_second_mas(Complex *out,Complex *in,double k_star
 	 out[y*N_k+x]  = ComplexMul(device_get_u_inter_for_second(d,fi_start,fi_step,N_fi, in , h, N_tapsd2,x,N_k),ComplexMul(MakeComplex(device_get_kaiser(temp_alpha,y,N_fi),0.0),MakeComplex(device_get_kaiser(temp_alpha,x,N_k),0.0)));
 }
 
-bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,Complex *zArray)
+bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,Complex *zArrayin,Complex *zArrayout)
 {
 	int N_k = nCols;//740;//37;//16;//1000; 
 	int N_fi = nRows;//820;//41;//16;//1000;
@@ -477,8 +478,8 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N
 	double fi_stop = (fi_degspan/2) * (pi/180.0);
 	double fi_span = fi_stop-fi_start;
 	double fi_step = (fi_stop-fi_start) / ((double)N_fi-1);
-	Complex *v2cc_lin_Complex = new Complex[N_k*N_fi];
-	linear_init_mas_UUSIG(0.0,F_start,F_stop,N_k,N_fi,fi_degspan,v2cc_lin_Complex);	
+	//Complex *v2cc_lin_Complex = new Complex[N_k*N_fi];
+	//linear_init_mas_UUSIG(0.0,F_start,F_stop,N_k,N_fi,fi_degspan,v2cc_lin_Complex);	
 	const int N_tapsd2 = 7;
 	const int L= 2000;
 	double alpha = 2.0;
@@ -522,7 +523,7 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N
 	Complex *v2cc_lin_Complex_out=new Complex[ N_k* N_fi];
 	gpuErrchk(cudaMalloc((void **) &dev_v2cc_lin_Complex_out, sizeof(Complex) * N_k* N_fi));
 	gpuErrchk(cudaMalloc((void **) &dev_v2cc_lin_Complex, sizeof(Complex) * N_k* N_fi));
-	gpuErrchk(cudaMemcpy(dev_v2cc_lin_Complex, v2cc_lin_Complex, sizeof(Complex) *N_k* N_fi, cudaMemcpyHostToDevice));
+	gpuErrchk(cudaMemcpy(dev_v2cc_lin_Complex, zArrayin, sizeof(Complex) *N_k* N_fi, cudaMemcpyHostToDevice));
 	int threadNum_first = 1024;
 	int ivx_first = N_fi/threadNum_first;
 	if(ivx_first*threadNum_first != N_fi) ivx_first++;
@@ -603,7 +604,7 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N
 	checkCudaErrors(cufftExecZ2Z(plan2D, (Complex *)dev_uni_n2_linear, (Complex *)dev_uni_n2_linear, CUFFT_INVERSE));
 	Mul_Last<<<gridSize1,blockSize1>>>(dev_uni_n2_linear,ucc2_nn_dev,ucc1_nn_dev,NEWROW,NEWCOL);
 	gpuErrchk( cudaPeekAtLastError() );
-	gpuErrchk(cudaMemcpy(zArray, dev_uni_n2_linear,  sizeof(Complex) *NEWCOL* NEWROW, cudaMemcpyDeviceToHost));
+	gpuErrchk(cudaMemcpy(zArrayout, dev_uni_n2_linear,  sizeof(Complex) *NEWCOL* NEWROW, cudaMemcpyDeviceToHost));
 	//end cuda_get_IFFT2D_V2C_using_CUDAIFFT
 	//time
 	cudaEventRecord(stop2, 0);
