@@ -16,6 +16,7 @@ int OLDROW = 740;
 int OLDCOL = 820;
 int NEWROW;// = 2048;//N_1out
 int NEWCOL;// = 1024;//N_2out
+
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {
@@ -31,7 +32,7 @@ const char* cuda_calculate_class::cuda_get_error()
 {
 	return cuda_error;
 }
-const char* cuda_calculate_class::cuda_get_error_file()
+const char* cuda_calculate_class::cuda_get_error_str()
 {
 	return cuda_error_file;
 }
@@ -39,50 +40,18 @@ bool cuda_calculate_class::init_plan(int N_1out,int N_2out)
 {		
 	NEWROW = N_1out;
 	NEWCOL = N_2out;
-	cudaError_t error;
 	checkCudaErrors(cufftPlan2d(&plan2D,N_2out, N_1out, CUFFT_Z2Z));
 	gpuErrchk(cudaMalloc((void **) &ucc1_nn_dev, sizeof(Complex) * N_1out));
-	if (error != cudaSuccess)
-    {
-       cuda_error = "init_plan ucc1_nn_dev malloc error";
-	   return false;
-    }
-	error = cudaMalloc((void **) &ucc2_nn_dev, sizeof(Complex) * N_2out);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "init_plan ucc2_nn_dev malloc error";
-	   return false;
-    }
-	error = cudaMalloc((void **) &dev_uni_n2_linear, sizeof(Complex) * N_2out* N_1out);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "init_plan dev_uni_n2_linear error";
-	   return false;
-    }
+	gpuErrchk(cudaMalloc((void **) &ucc2_nn_dev, sizeof(Complex) * N_2out));
+	gpuErrchk(cudaMalloc((void **) &dev_uni_n2_linear, sizeof(Complex) * N_2out* N_1out));
 	return true;
 }
 
 bool cuda_calculate_class::cuda_free()
 {
-	cudaError_t error;
-	error = cudaFree(ucc1_nn_dev);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "cuda_free ucc1_nn_dev free error";
-	   return false;
-    }
-	error = cudaFree(ucc2_nn_dev);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "cuda_free ucc2_nn_dev free error";
-	   return false;
-    }
-	error = cudaFree(dev_uni_n2_linear);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "cuda_free dev_uni_n2_linear free error";
-	   return false;
-    }
+	gpuErrchk(cudaFree(ucc1_nn_dev));
+	gpuErrchk(cudaFree(ucc2_nn_dev));
+	gpuErrchk(cudaFree(dev_uni_n2_linear));
 	checkCudaErrors(cufftDestroy(plan2D));
 	return true;
 }
@@ -490,22 +459,26 @@ void __global__  cuda_parallel_second_mas(Complex *out,Complex *in,double k_star
 	 out[y*N_k+x]  = ComplexMul(device_get_u_inter_for_second(d,fi_start,fi_step,N_fi, in , h, N_tapsd2,x,N_k),ComplexMul(MakeComplex(device_get_kaiser(temp_alpha,y,N_fi),0.0),MakeComplex(device_get_kaiser(temp_alpha,x,N_k),0.0)));
 }
 
-bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Complex *zArray)
+bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,Complex *zArray)
 {
 	int N_k = nCols;//740;//37;//16;//1000; 
 	int N_fi = nRows;//820;//41;//16;//1000;
-	double F_start = 8.2;
-	double F_stop = 10.2;
+
+	NEWROW = N_1out;
+	NEWCOL = N_2out;
+	init_plan(NEWROW,NEWCOL);
+	double F_start = dFStart;//8.2;
+	double F_stop = dFStop;//10.2;
 	double k_start = 2 * pi * F_start / 0.3;
 	double k_stop = 2* pi * F_stop/0.3;
 	double k_step = (k_stop-k_start) / ((double)N_k-1);
-	double fi_degspan = 20.0;
+	double fi_degspan = dAzStop - dAzStart;//20.0;
 	double fi_start = - (fi_degspan/2) * (pi/180.0);
 	double fi_stop = (fi_degspan/2) * (pi/180.0);
 	double fi_span = fi_stop-fi_start;
 	double fi_step = (fi_stop-fi_start) / ((double)N_fi-1);
 	Complex *v2cc_lin_Complex = new Complex[N_k*N_fi];
-	linear_init_mas_UUSIG(FI0,F_start,F_stop,N_k,N_fi,fi_degspan,v2cc_lin_Complex);	
+	linear_init_mas_UUSIG(0.0,F_start,F_stop,N_k,N_fi,fi_degspan,v2cc_lin_Complex);	
 	const int N_tapsd2 = 7;
 	const int L= 2000;
 	double alpha = 2.0;
@@ -538,42 +511,18 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Comple
     //1
 	int devID = 0;
 	cudaDeviceProp deviceProp;
-    error = cudaGetDevice(&devID);
-	
 	error = cudaGetDeviceProperties(&deviceProp, devID);
-
 	if (deviceProp.major < 2)
 	{
 		cuda_error = "convertZ2Z compute capability error";
 		return false;
 	}
-	printf ("deviceProp %d\n",deviceProp.major);
-
-
     Complex *dev_v2cc_lin_Complex_out;
 	Complex *dev_v2cc_lin_Complex;
-
-
 	Complex *v2cc_lin_Complex_out=new Complex[ N_k* N_fi];
-	error = cudaMalloc((void **) &dev_v2cc_lin_Complex_out, sizeof(Complex) * N_k* N_fi);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "convertZ2Z malloc dev_v2cc_lin_Complex_out error";
-	   return false;
-    }
-	error = cudaMalloc((void **) &dev_v2cc_lin_Complex, sizeof(Complex) * N_k* N_fi);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "convertZ2Z malloc dev_v2cc_lin_Complex error";
-	   return false;
-    }
-	error = cudaMemcpy(dev_v2cc_lin_Complex, v2cc_lin_Complex, sizeof(Complex) *N_k* N_fi, cudaMemcpyHostToDevice);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "convertZ2Z cudaMemcpy v2cc_lin_Complex dev_v2cc_lin_Complex error";
-	   return false;
-    }
-
+	gpuErrchk(cudaMalloc((void **) &dev_v2cc_lin_Complex_out, sizeof(Complex) * N_k* N_fi));
+	gpuErrchk(cudaMalloc((void **) &dev_v2cc_lin_Complex, sizeof(Complex) * N_k* N_fi));
+	gpuErrchk(cudaMemcpy(dev_v2cc_lin_Complex, v2cc_lin_Complex, sizeof(Complex) *N_k* N_fi, cudaMemcpyHostToDevice));
 	int threadNum_first = 1024;
 	int ivx_first = N_fi/threadNum_first;
 	if(ivx_first*threadNum_first != N_fi) ivx_first++;
@@ -581,6 +530,7 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Comple
 	dim3 gridSize_first = dim3(ivx_first, N_k, 1);
 
 	cuda_parallel_first_mas<<<gridSize_first,blockSize_first>>>(dev_v2cc_lin_Complex_out,dev_v2cc_lin_Complex,k_start,k_step,k_stop,fi_span,fi_start,fi_step,dev_h,N_tapsd2,N_k,N_fi);
+	gpuErrchk( cudaPeekAtLastError() );
     //end 1
 
 	 //time
@@ -597,8 +547,6 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Comple
 	cudaEventCreate(&stop1);
 	cudaEventRecord(start1, 0);
 	//time
-
-
 	//2
 	int threadNum_sec = 1024;
 	int ivx_sec =N_k/threadNum_sec;
@@ -608,6 +556,7 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Comple
 	double temp_alpha = 2.0;
 
 	cuda_parallel_second_mas<<<gridSize_sec,blockSize_sec>>>(dev_v2cc_lin_Complex,dev_v2cc_lin_Complex_out,k_start,fi_span,fi_start,fi_step,N_tapsd2,temp_alpha,N_k,N_fi,dev_h,k_stop);
+	gpuErrchk( cudaPeekAtLastError() );
 	//time
 	cudaEventRecord(stop1, 0);
 	cudaEventSynchronize(stop1);
@@ -642,21 +591,19 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Comple
     dim3 gridSize = dim3(ivx, NEWCOL, 1);
 	double dd1 = k_1start / (NEWROW * k_1step);
 	MakeComplex_ucc1_nn<<<NEWROW,1>>>(ucc1_nn_dev,dd1,NEWROW);
-
+	gpuErrchk( cudaPeekAtLastError() );
 	Complex cc = MakeComplex(((double)NEWROW * (double)NEWCOL / (double)( N_k*N_fi*NEWROW*NEWCOL)),0.0);
 	double dd = k_1start/k_1step + k_2start/k_2step;
 	cc = ComplexMul(cc,MakeComplex(cos( - pi * dd),sin(- pi * dd)));
 	double dd2 = k_2start / ( (double)NEWCOL * k_2step);
 	MakeComplex_ucc2_nn<<<NEWCOL, 1>>>(ucc2_nn_dev,cc,dd2,N_k,N_fi,NEWROW,NEWCOL,dd);	
+	gpuErrchk( cudaPeekAtLastError() );
 	Make_Plan<<<gridSize,blockSize>>>(dev_uni_n2_linear,dev_v2cc_lin_Complex,NEWROW,NEWCOL,N_k,N_fi);
+	gpuErrchk( cudaPeekAtLastError() );
 	checkCudaErrors(cufftExecZ2Z(plan2D, (Complex *)dev_uni_n2_linear, (Complex *)dev_uni_n2_linear, CUFFT_INVERSE));
 	Mul_Last<<<gridSize1,blockSize1>>>(dev_uni_n2_linear,ucc2_nn_dev,ucc1_nn_dev,NEWROW,NEWCOL);
-	error = cudaMemcpy(zArray, dev_uni_n2_linear,  sizeof(Complex) *NEWCOL* NEWROW, cudaMemcpyDeviceToHost);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "convertZ2Z cudaMemcpy dev_uni_n2_linear zArray error";
-	   return false;
-    }
+	gpuErrchk( cudaPeekAtLastError() );
+	gpuErrchk(cudaMemcpy(zArray, dev_uni_n2_linear,  sizeof(Complex) *NEWCOL* NEWROW, cudaMemcpyDeviceToHost));
 	//end cuda_get_IFFT2D_V2C_using_CUDAIFFT
 	//time
 	cudaEventRecord(stop2, 0);
@@ -672,32 +619,11 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Comple
 	printf ("cuda_convert_auproc: full time		 %f ms\n", time3);
 	//time
 	//FULL TIME 3638
-	error = cudaFree(dev_v2cc_lin_Complex_out);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "convertZ2Z free dev_v2cc_lin_Complex_out error";
-	   return false;
-    }
-	error = cudaFree(dev_v2cc_lin_Complex);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "convertZ2Z free dev_v2cc_lin_Complex error";
-	   return false;
-    }
-	error = cudaFree(dev_h);
-	if (error != cudaSuccess)
-    {
-       cuda_error = "convertZ2Z free dev_h error";
-	   return false;
-    }
-
+	gpuErrchk(cudaFree(dev_v2cc_lin_Complex_out));
+	gpuErrchk(cudaFree(dev_v2cc_lin_Complex));
+	gpuErrchk(cudaFree(dev_h));
 	return true;
-}
-
-double cuda_calculate_class::test_Cuda_ConvertZ2Z()
-{
-	Complex *zArray= new Complex[NEWROW*NEWCOL];
-	return Cuda_ConvertZ2Z(OLDROW,OLDCOL,0,zArray);
+	cuda_free();
 }
 void cuda_calculate_class::linear_init_mas_UUSIG(double FI0,double F_start, double F_stop, int N_k, int N_fi, double fi_degspan,Complex *uusig)
 {
@@ -754,74 +680,6 @@ void cuda_calculate_class::linear_init_mas_UUSIG(double FI0,double F_start, doub
 
 cuda_calculate_class::cuda_calculate_class()
 {
-	////
-	//// NOT USED
-	////
-	//int nRows = 16;
- //   int nCols = 16;
-	//int SIGNAL_SIZE=nRows*nCols;
- //  // printf("[simpleCUFFT] is starting...\n");
- //   // Allocate host memory for the signal
- //   Complex *h_signal = (Complex *)malloc(sizeof(Complex) * SIGNAL_SIZE);
- //   // Initalize the memory for the signal
- //   for (unsigned int i = 0; i < SIGNAL_SIZE; ++i)
- //   {
- //       h_signal[i].x = 1.0;
- //       h_signal[i].y = 0.0;
- //   }
- //   int mem_size = sizeof(Complex) * SIGNAL_SIZE;
- //   // Allocate device memory for signal
- //   Complex *d_signal;
- //   checkCudaErrors(cudaMalloc((void **)&d_signal, mem_size));
- //   // Copy host memory to device
- //   checkCudaErrors(cudaMemcpy(d_signal, h_signal, mem_size,cudaMemcpyHostToDevice));
- //   // CUFFT plan
- //   cufftHandle plan;
-	//int rank=1;	
-	//int batch = nRows;
-	//int n[1] = {nCols};
-	//int idist = nCols;
- //   int odist = nCols;
-	//int inembed[] = {nCols};
-	//int onembed[] = {nCols};
-	//int istride = 1;
- //   int ostride = 1;
-	//checkCudaErrors(cufftPlanMany(&plan,rank, n, inembed, istride, idist,onembed, ostride, odist, CUFFT_Z2Z, batch));
- //   //checkCudaErrors(cufftPlan1d(&plan, mem_size, CUFFT_Z2Z, 1));
- //   // Transform signal
- //   //printf("Transforming signal cufftExecC2C\n");
- //   checkCudaErrors(cufftExecZ2Z(plan, (cufftDoubleComplex *)d_signal, (cufftDoubleComplex *)d_signal, CUFFT_FORWARD));
- //   // Check if kernel execution generated and error
- //  // getLastCudaError("Kernel execution failed [ ComplexPointwiseMulAndScale ]");
-	//  for (unsigned int i = 0; i < SIGNAL_SIZE; ++i)
- //   {
- //     //  printf("%f ",d_signal[i].x); 
- //   }
-	//	/*
- //   // Transform signal back
- //   printf("Transforming signal back cufftExecC2C\n");
- //   checkCudaErrors(cufftExecZ2Z(plan, (cufftDoubleComplex *)d_signal, (cufftDoubleComplex *)d_signal, CUFFT_INVERSE));
-	//
- //   // Copy device memory to host
- //   Complex *h_convolved_signal = h_signal;
- //   checkCudaErrors(cudaMemcpy(h_convolved_signal, d_signal, mem_size,
- //                              cudaMemcpyDeviceToHost));
-
- //   // Allocate host memory for the convolution result
- //   Complex *h_convolved_signal_ref = (Complex *)malloc(sizeof(Complex) * SIGNAL_SIZE);
-
- //   // Convolve on the host
-
- //   // check result
- //   bool bTestResult = sdkCompareL2fe((float *)h_convolved_signal_ref, (float *)h_convolved_signal, 2 * SIGNAL_SIZE, 1e-5f);
-	//*/
- //   //Destroy CUFFT context
- //   checkCudaErrors(cufftDestroy(plan));
- //   // cleanup memory
- //   free(h_signal);
- //   //free(h_convolved_signal_ref);
- //   checkCudaErrors(cudaFree(d_signal));
- //   cudaDeviceReset();
 }
 
 Complex ComplexMul(Complex a, Complex b)

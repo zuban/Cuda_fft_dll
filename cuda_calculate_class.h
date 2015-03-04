@@ -27,19 +27,17 @@ static __device__ __host__ inline Complex MakeComplex(double, double);
 class cuda_calculate_class
 {
 public:
-
 	const char* cuda_get_error();
-	const char* cuda_get_error_file();
+	const char* cuda_get_error_str();
+	bool Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,Complex *zArray);
+	cuda_calculate_class();
+	
+private:
 	bool init_plan(int N_1out,int N_2out);
 	bool cuda_free();
-	bool Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Complex *zArray);
-	cuda_calculate_class();
-	double test_Cuda_ConvertZ2Z();
-private:
 	double I0(double x);
 	double get_kaiser(double alpha, int n, int N);
 	double get_h(double alpha,int n, int N_pf, double L);
 	void cuda_get_IFFT2D_V2C_using_CUDAIFFT(Complex u[],int  N_1in,int  N_2in, int N_1out, int N_2out, double k_1start, double k_1step, double k_2start, double k_2step,Complex* uout);
 	void linear_init_mas_UUSIG(double FI0,double F_start, double F_stop, int N_k, int N_fi, double fi_degspan,Complex *uusig);
-	
 };
