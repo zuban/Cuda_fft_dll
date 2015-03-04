@@ -10,7 +10,7 @@
 
 typedef double2 Complex;
 
-static __device__ double device_get_kaiser(double alpha, int n, int N);
+static  __device__ double device_get_kaiser(double alpha, int n, int N);
 static __global__ void MakeComplex_ucc1_nn(Complex* mas,double dd1,int N_1out);
 static __global__ void MakeComplex_ucc2_nn(Complex* mas,Complex cc,double dd2,int N_1in,int N_2in,int N_1out,int N_2out,double dd);
 static __global__ void Make_Plan(Complex* out,Complex* mas,int N_1out,int N_2out,int N_1in,int N_2in);
@@ -28,14 +28,18 @@ class cuda_calculate_class
 {
 public:
 
+	const char* cuda_get_error();
+	const char* cuda_get_error_file();
+	bool init_plan(int N_1out,int N_2out);
+	bool cuda_free();
+	bool Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Complex *zArray);
 	cuda_calculate_class();
 	double test_Cuda_ConvertZ2Z();
+private:
 	double I0(double x);
 	double get_kaiser(double alpha, int n, int N);
 	double get_h(double alpha,int n, int N_pf, double L);
 	void cuda_get_IFFT2D_V2C_using_CUDAIFFT(Complex u[],int  N_1in,int  N_2in, int N_1out, int N_2out, double k_1start, double k_1step, double k_2start, double k_2step,Complex* uout);
 	void linear_init_mas_UUSIG(double FI0,double F_start, double F_stop, int N_k, int N_fi, double fi_degspan,Complex *uusig);
-	void init_plan(int N_1out,int N_2out);
-	void cuda_free();
-	void Cuda_ConvertZ2Z(int nCols,int nRows,double FI0,Complex *zArray);
+	
 };
