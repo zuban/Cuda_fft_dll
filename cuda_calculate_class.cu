@@ -12,6 +12,14 @@ doubleComplex* ucc1_nn_dev;
 doubleComplex* ucc2_nn_dev;
 doubleComplex *dev_uni_n2_linear;
 
+doubleComplex *double_main_mas = 0;
+int GLOBAL_N_k;
+int GLOBAL_N_fi;
+double GLOBAL_dFStart0;
+double GLOBAL_dFStop0;
+double GLOBAL_dAzStart0;
+double GLOBAL_dAzStop0;
+
 double double_x_start;
 double double_x_stop;
 double double_z_start;
@@ -592,10 +600,19 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N
 	double k_2stop =  2*k_start*cos(fi_stop);
 	double k_2step =  (k_2stop-k_2start)/(N_k-1);
 
-	double_x_start =  k_1start;
-	double_x_stop =  k_1stop;
-	double_z_start =  k_2start;
-	double_z_stop =  k_2stop;
+	double k_2rep = 2 * pi / k_2step;
+	double k_1rep = 2* pi / k_1step;
+
+	double k_2xstep = k_2rep / N_1out ; 
+	double k_1zstep = k_1rep / N_1out ; 
+
+	double_x_start = -k_2rep /2;
+	double_x_stop = double_x_start + k_2xstep * ( N_1out -1);
+	double_z_start =  -k_1rep /2;
+	double_z_stop =  double_z_start + k_1zstep * ( N_1out -1);
+
+
+
 	int threadNum1 = 256;
 	dim3 blockSize1 = dim3(threadNum1, 1, 1); 
 	int ivx1 = NEWROW/threadNum1;
@@ -731,7 +748,71 @@ double cuda_calculate_class::get_zstop()
 {
 	return double_z_stop;
 }
+bool cuda_calculate_class::SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin)
+{
+	if(double_main_mas != 0) delete double_main_mas;
+	double_main_mas = new doubleComplex[nCols*nRows];
+	for (int i=0; i<=nCols-1;i++)
+	{
+		for (int j=0;j<=nRows-1;j++)
+		{
+			double_main_mas[nCols*j+i] = zArrayin[nCols*j+i];
+		}
+	}
+	GLOBAL_N_k = nCols;
+	GLOBAL_N_fi = nRows;
+	GLOBAL_dFStart0 = dFStart;
+	GLOBAL_dFStop0 =  dFStop;
+	GLOBAL_dAzStart0 = dAzStart;
+	GLOBAL_dAzStop0 = dAzStop;
+	return 0;
+}
+bool cuda_calculate_class::CalcZ2Z(int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayout)
+{
+			double dAzStep0 = (GLOBAL_dAzStop0 - GLOBAL_dAzStart0) / (GLOBAL_N_fi-1); //считаем step
+			double dFStep0 = (GLOBAL_dFStop0 - GLOBAL_dFStart0) / (GLOBAL_N_k-1); //считаем step 
+			int iAzStart = round ((dAzStart - GLOBAL_dAzStart0)/ dAzStep0); // i start Az
+			int iAzStop = round ((dAzStop - GLOBAL_dAzStart0)/ dAzStep0); // i stop Az
+			int iFStart = round ((dFStart - GLOBAL_dFStart0)/ dFStep0); // i start F
+			int iFStop = round ((dFStop - GLOBAL_dFStart0)/ dFStep0); // i stop F
+			if (iAzStart <0) 
+				iAzStart = 0;
+			if (iAzStart >= GLOBAL_N_fi)
+				iAzStart = GLOBAL_N_fi-1;
+			if (iFStart <0) 
+				iFStart = 0;
+			if (iFStart >= GLOBAL_N_k)
+				iFStart = GLOBAL_N_k-1;
 
+			if (iAzStop <0) 
+				iAzStop = 0;
+			if (iAzStop >= GLOBAL_N_fi)
+				iAzStop = GLOBAL_N_fi-1;
+			if (iFStop <0) 
+				iFStop = 0;
+			if (iFStop >= GLOBAL_N_k)
+				iFStop = GLOBAL_N_k-1;
+			int  N_k_new = iFStop - iFStart + 1;//new N_k
+			int  N_fi_new = iAzStop - iAzStart + 1;//new N_fi
+			doubleComplex *mas = new doubleComplex[N_k_new*N_fi_new];
+			if (N_k_new<16 || N_fi_new<16)
+				return -1;
+			for (int i=0; i < N_k_new; i++)
+			{
+				for (int j=0; j < N_fi_new; j++)
+				{
+					mas[N_k_new*j + i]= double_main_mas[GLOBAL_N_k*(j + iAzStart) + i + iFStart];
+				}
+			}
+			bool ans = Cuda_ConvertZ2Z(N_k_new,N_fi_new,N_1out,N_2out,dFStart,dFStop,dAzStart,dAzStop,mas,zArrayout);
+			delete mas;
+			mas = 0;
+			return ans;
+}
+double cuda_calculate_class::round(double number)
+{
+	return number < 0.0 ? ceil(number - 0.5) : floor(number + 0.5);
+}
 
 
 

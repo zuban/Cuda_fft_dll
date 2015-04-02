@@ -19,16 +19,26 @@ MATHFUNCSDLL_API const char* cuda_get_error_str()
 {
 	return cdl->cuda_get_error_str();
 }
-MATHFUNCSDLL_API bool Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,double *zArrayin,double *zArrayout)
+//MATHFUNCSDLL_API bool Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,double *zArrayin,double *zArrayout)
+//{
+//	if(cdl != 0) cdl=new cuda_calculate_class();
+//	return cdl->Cuda_ConvertZ2Z(nCols,nRows,N_1out, N_2out, dFStart,  dFStop,  dAzStart,  dAzStop,(doubleComplex*)zArrayin,(doubleComplex*)zArrayout);
+//}
+MATHFUNCSDLL_API bool SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,double *zArrayin)
 {
 	if(cdl != 0) cdl=new cuda_calculate_class();
-	return cdl->Cuda_ConvertZ2Z(nCols,nRows,N_1out, N_2out, dFStart,  dFStop,  dAzStart,  dAzStop,(doubleComplex*)zArrayin,(doubleComplex*)zArrayout);
+	return cdl->SetArrayZ2Z(nCols,nRows,dFStart,dFStop,dAzStart,dAzStop,(doubleComplex*)zArrayin);
 }
-MATHFUNCSDLL_API bool Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,float *zArrayin,float *zArrayout)
+MATHFUNCSDLL_API bool CalcZ2Z(int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,double *zArrayout)
 {
-	if(cdl != 0) cdl=new cuda_calculate_class();
-	return cdl->Cuda_ConvertC2C(nCols,nRows,N_1out, N_2out, dFStart,  dFStop,  dAzStart,  dAzStop,(floatComplex*)zArrayin,(floatComplex*)zArrayout);
+	return cdl->CalcZ2Z(N_1out,N_2out,dFStart,dFStop,dAzStart,dAzStop,(doubleComplex*)zArrayout);
 }
+
+//MATHFUNCSDLL_API bool Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,float *zArrayin,float *zArrayout)
+//{
+//	if(cdl != 0) cdl=new cuda_calculate_class();
+//	return cdl->Cuda_ConvertC2C(nCols,nRows,N_1out, N_2out, dFStart,  dFStop,  dAzStart,  dAzStop,(floatComplex*)zArrayin,(floatComplex*)zArrayout);
+//}
 MATHFUNCSDLL_API double get_xstart()
 {
 	return cdl->get_xstart();

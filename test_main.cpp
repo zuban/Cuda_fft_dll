@@ -20,8 +20,9 @@ int main()
     int OLDROW = 820;
 	double2 *masin=new double2[OLDCOL*OLDROW];
 	double2 *masout=new double2[NEWCOL*NEWROW];
-	bool a = Cuda_ConvertZ2Z(OLDROW,OLDCOL,NEWROW,NEWCOL,8.2,10.2,40.0,60.0,(double*)masin,(double*)masout);
-
+	//bool a = Cuda_ConvertZ2Z(OLDROW,OLDCOL,NEWROW,NEWCOL,8.2,10.2,40.0,60.0,(double*)masin,(double*)masout);
+	bool a = SetArrayZ2Z(OLDROW,OLDCOL,8.2,10.2,40.0,60.0,(double*)masin);
+	bool b = CalcZ2Z(NEWROW,NEWCOL,8.2,10.2,40.0,60.0,(double*)masout);
 
 	//float2 *masin=new float2[OLDCOL*OLDROW];
 	//float2 *masout=new float2[NEWCOL*NEWROW];
