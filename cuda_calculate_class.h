@@ -52,11 +52,21 @@ public:
     double get_xstop();
     double get_zstart();
     double get_zstop();
-	
+
+
+	float f_get_xstart();
+    float f_get_xstop();
+    float f_get_zstart();
+    float f_get_zstop();
+	bool SetArrayC2C(int nCols,int nRows,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin);
+	bool CalcC2C(int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayout);
+	bool Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin,floatComplex *zArrayout);
+
 private:
 	bool Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin,doubleComplex *zArrayout);
-	bool Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin,floatComplex *zArrayout);
-	double round(double number);
+		double round(double number);
+		float float_round(float number);
+
 
 	bool double_init_plan(int N_1out,int N_2out);
 	bool double_cuda_free();

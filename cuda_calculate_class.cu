@@ -845,39 +845,106 @@ double cuda_calculate_class::round(double number)
 
 
 
+floatComplex *float_main_mas = 0;
+float f_GLOBAL_dFStart0;
+float f_GLOBAL_dFStop0;
+float f_GLOBAL_dAzStart0;
+float f_GLOBAL_dAzStop0;
+
+double float_x_start;
+double float_x_stop;
+double float_z_start;
+double float_z_stop;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+float cuda_calculate_class::f_get_xstart()
+{
+	return float_x_start;
+}
+float cuda_calculate_class::f_get_xstop()
+{
+	return float_x_stop;
+}
+float cuda_calculate_class::f_get_zstart()
+{
+	return float_z_start;
+}
+float cuda_calculate_class::f_get_zstop()
+{
+	return float_z_stop;
+}
+float cuda_calculate_class::float_round(float number)
+{
+	return number < 0.0 ? ceil(number - 0.5) : floor(number + 0.5);
+}
 float f_pi = 3.1415926;
 floatComplex* f_ucc1_nn_dev;
 floatComplex* f_ucc2_nn_dev;
 floatComplex *f_dev_uni_n2_linear;
 
 cufftHandle f_plan2D;
+bool cuda_calculate_class::SetArrayC2C(int nCols,int nRows,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin)
+{
+	if(float_main_mas != 0) delete float_main_mas;
+	float_main_mas = new floatComplex[nCols*nRows];
+	for (int i=0; i<=nCols-1;i++)
+	{
+		for (int j=0;j<=nRows-1;j++)
+		{
+			float_main_mas[nCols*j+i] = zArrayin[nCols*j+i];
+		}
+	}
+	GLOBAL_N_k = nCols;
+	GLOBAL_N_fi = nRows;
+	f_GLOBAL_dFStart0 = dFStart;
+	f_GLOBAL_dFStop0 =  dFStop;
+	f_GLOBAL_dAzStart0 = dAzStart;
+	f_GLOBAL_dAzStop0 = dAzStop;
+	return 0;
+}
+bool cuda_calculate_class::CalcC2C(int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayout)
+{
+			float dAzStep0 = (f_GLOBAL_dAzStop0 - f_GLOBAL_dAzStart0) / (GLOBAL_N_fi-1); //считаем step
+			float dFStep0 = (f_GLOBAL_dFStop0 - f_GLOBAL_dFStart0) / (GLOBAL_N_k-1); //считаем step 
+			int iAzStart = round ((dAzStart - f_GLOBAL_dAzStart0)/ dAzStep0); // i start Az
+			int iAzStop = round ((dAzStop -f_GLOBAL_dAzStart0)/ dAzStep0); // i stop Az
+			int iFStart = round ((dFStart - f_GLOBAL_dFStart0)/ dFStep0); // i start F
+			int iFStop = round ((dFStop - f_GLOBAL_dFStart0)/ dFStep0); // i stop F
+			if (iAzStart <0) 
+				iAzStart = 0;
+			if (iAzStart >= GLOBAL_N_fi)
+				iAzStart = GLOBAL_N_fi-1;
+			if (iFStart <0) 
+				iFStart = 0;
+			if (iFStart >= GLOBAL_N_k)
+				iFStart = GLOBAL_N_k-1;
+
+			if (iAzStop <0) 
+				iAzStop = 0;
+			if (iAzStop >= GLOBAL_N_fi)
+				iAzStop = GLOBAL_N_fi-1;
+			if (iFStop <0) 
+				iFStop = 0;
+			if (iFStop >= GLOBAL_N_k)
+				iFStop = GLOBAL_N_k-1;
+			int  N_k_new = iFStop - iFStart + 1;//new N_k
+			int  N_fi_new = iAzStop - iAzStart + 1;//new N_fi
+			floatComplex *mas = new floatComplex[N_k_new*N_fi_new];
+			if (N_k_new<16 || N_fi_new<16)
+				return -1;
+			for (int i=0; i < N_k_new; i++)
+			{
+				for (int j=0; j < N_fi_new; j++)
+				{
+					mas[N_k_new*j + i]= float_main_mas[GLOBAL_N_k*(j + iAzStart) + i + iFStart];
+				}
+			}
+			bool ans = Cuda_ConvertC2C(N_k_new,N_fi_new,N_1out,N_2out,dFStart,dFStop,dAzStart,dAzStop,mas,zArrayout);
+			delete mas;
+			mas = 0;
+			return ans;
+}
+
 bool cuda_calculate_class::float_init_plan(int N_1out,int N_2out)
 {		
 	NEWROW = N_1out;
@@ -1372,16 +1439,30 @@ bool cuda_calculate_class::Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N
 	//time
 	// cuda_get_IFFT2D_V2C_using_CUDAIFFT
 
-	//float k_1start = 0.3;
-	//float k_1step = 0.02;
-	//float k_2start = 12.4;
-	//float k_2step = 0.01;
-	float k_1start = 2*k_start;
+
+	//float k_1start = 2*k_start;
+	//float k_1stop = 2*k_stop*cos(fi_start);
+	//float k_1step = (k_1stop-k_1start)/(N_k-1);
+	//float k_2start =  2*k_start*sin(fi_start);
+	//float k_2stop =  2*k_start*cos(fi_stop);
+	//float k_2step =  (k_2stop-k_2start)/(N_k-1);
+		float k_1start = 2*k_start;
 	float k_1stop = 2*k_stop*cos(fi_start);
 	float k_1step = (k_1stop-k_1start)/(N_k-1);
 	float k_2start =  2*k_start*sin(fi_start);
 	float k_2stop =  2*k_start*cos(fi_stop);
 	float k_2step =  (k_2stop-k_2start)/(N_k-1);
+
+	float k_2rep = 2 * pi / k_2step;
+	float k_1rep = 2* pi / k_1step;
+
+	float k_2xstep = k_2rep / N_1out ; 
+	float k_1zstep = k_1rep / N_1out ; 
+
+	float_x_start = -k_2rep /2;
+	float_x_stop = float_x_start + k_2xstep * ( N_1out -1);
+	float_z_start =  -k_1rep /2;
+	float_z_stop =  float_z_start + k_1zstep * ( N_1out -1);
 	int threadNum1 = 256;
 	dim3 blockSize1 = dim3(threadNum1, 1, 1); 
 	int ivx1 = NEWROW/threadNum1;
@@ -1404,7 +1485,7 @@ bool cuda_calculate_class::Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N
 	gpuErrchk( cudaPeekAtLastError() );
 	float_Make_Plan<<<gridSize,blockSize>>>(f_dev_uni_n2_linear,dev_v2cc_lin_Complex,NEWROW,NEWCOL,N_k,N_fi);
 	gpuErrchk( cudaPeekAtLastError() );
-	//!!!checkCudaErrors(cufftExecZ2Z(f_plan2D, (floatComplex *)f_dev_uni_n2_linear, (floatComplex *)f_dev_uni_n2_linear, CUFFT_INVERSE));
+	checkCudaErrors(cufftExecC2C(f_plan2D, (floatComplex *)f_dev_uni_n2_linear, (floatComplex *)f_dev_uni_n2_linear, CUFFT_INVERSE));
 	float_Mul_Last<<<gridSize1,blockSize1>>>(f_dev_uni_n2_linear,f_ucc2_nn_dev,f_ucc1_nn_dev,NEWROW,NEWCOL);
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk(cudaMemcpy(zArrayout, f_dev_uni_n2_linear,  sizeof(floatComplex) *NEWCOL* NEWROW, cudaMemcpyDeviceToHost));
