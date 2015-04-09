@@ -6,7 +6,16 @@
 
 ## API
 
-1. ConvertZ2Z(int N_1in, int N_2in, double FI, double2 *Array) Выходной массив записывается в Array
+1. bool SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,double *zArrayin,bool Device);   Device == true GeForce, false Tesla
 Возвращает true в случае успеха, false в случае неудачи. Записывает ошибку в error
-2. Init_Plan(int N_1out, int N_2out) Возвращает true в случае успеха, false в случае неудачи. Записывает ошибку в error
-3. Cuda_Free() Высвобождает ресурсы
+2. bool CalcZ2Z(int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,double *zArrayout); Возвращает true в случае успеха, false в случае неудачи. Записывает ошибку в error
+3. bool SetArrayC2C(int nCols,int nRows,float dFStart, float dFStop, float dAzStart, float dAzStop,float *zArrayin,bool Device);
+4. bool CalcC2C(int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,float *zArrayout);
+5. double get_xstart();
+6. double get_xstop();
+7. double get_zstart();
+8. double get_zstop();
+9. float f_get_xstart();
+10. float f_get_xstop();
+11. float f_get_zstart();
+12. float f_get_zstop();
