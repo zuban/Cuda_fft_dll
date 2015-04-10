@@ -657,8 +657,9 @@ bool cuda_calculate_class::Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N
 	gpuErrchk(cudaFree(dev_v2cc_lin_Complex_out));
 	gpuErrchk(cudaFree(dev_v2cc_lin_Complex));
 	gpuErrchk(cudaFree(dev_h));
-	return true;
 	double_cuda_free();
+	return true;
+	
 }
 void cuda_calculate_class::double_linear_init_mas_UUSIG(double FI0,double F_start, double F_stop, int N_k, int N_fi, double fi_degspan,doubleComplex *uusig)
 {
@@ -748,8 +749,30 @@ double cuda_calculate_class::get_zstop()
 {
 	return double_z_stop;
 }
-bool cuda_calculate_class::SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin)
+bool cuda_calculate_class::SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin,bool Device)
 {
+		if (Device)
+	{	
+	 int devID = 1;
+	  cudaSetDevice(devID);
+
+    cudaError_t error1;
+    cudaDeviceProp deviceProp1;
+    error1 = cudaGetDevice(&devID);
+    error1 = cudaGetDeviceProperties(&deviceProp1, devID);
+	  printf("GPU Device %d: \"%s\" with compute capability %d.%d\n\n", devID, deviceProp1.name, deviceProp1.major, deviceProp1.minor);
+}
+	else{
+		
+	 int devID = 0;
+	  cudaSetDevice(devID);
+
+    cudaError_t error1;
+    cudaDeviceProp deviceProp1;
+    error1 = cudaGetDevice(&devID);
+    error1 = cudaGetDeviceProperties(&deviceProp1, devID);
+	  printf("GPU Device %d: \"%s\" with compute capability %d.%d\n\n", devID, deviceProp1.name, deviceProp1.major, deviceProp1.minor);
+}
 	if(double_main_mas != 0) delete double_main_mas;
 	double_main_mas = new doubleComplex[nCols*nRows];
 	for (int i=0; i<=nCols-1;i++)
@@ -883,8 +906,30 @@ floatComplex* f_ucc2_nn_dev;
 floatComplex *f_dev_uni_n2_linear;
 
 cufftHandle f_plan2D;
-bool cuda_calculate_class::SetArrayC2C(int nCols,int nRows,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin)
+bool cuda_calculate_class::SetArrayC2C(int nCols,int nRows,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin,bool Device)
 {
+	if (Device)
+	{	
+	 int devID = 1;
+	  cudaSetDevice(devID);
+
+    cudaError_t error1;
+    cudaDeviceProp deviceProp1;
+    error1 = cudaGetDevice(&devID);
+    error1 = cudaGetDeviceProperties(&deviceProp1, devID);
+	  printf("GPU Device %d: \"%s\" with compute capability %d.%d\n\n", devID, deviceProp1.name, deviceProp1.major, deviceProp1.minor);
+}
+	else{
+		
+	 int devID = 0;
+	  cudaSetDevice(devID);
+
+    cudaError_t error1;
+    cudaDeviceProp deviceProp1;
+    error1 = cudaGetDevice(&devID);
+    error1 = cudaGetDeviceProperties(&deviceProp1, devID);
+	  printf("GPU Device %d: \"%s\" with compute capability %d.%d\n\n", devID, deviceProp1.name, deviceProp1.major, deviceProp1.minor);
+}
 	if(float_main_mas != 0) delete float_main_mas;
 	float_main_mas = new floatComplex[nCols*nRows];
 	for (int i=0; i<=nCols-1;i++)
@@ -1373,8 +1418,9 @@ bool cuda_calculate_class::Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N
 	cudaEventRecord(start, 0);
 	//time
     //1
-	int devID = 0;
+	int devID ;
 	cudaDeviceProp deviceProp;
+    error = cudaGetDevice(&devID);
 	error = cudaGetDeviceProperties(&deviceProp, devID);
 	if (deviceProp.major < 2)
 	{
@@ -1507,8 +1553,9 @@ bool cuda_calculate_class::Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N
 	gpuErrchk(cudaFree(dev_v2cc_lin_Complex_out));
 	gpuErrchk(cudaFree(dev_v2cc_lin_Complex));
 	gpuErrchk(cudaFree(dev_h));
-	return true;
 	float_cuda_free();
+	return true;
+	
 }
 void cuda_calculate_class::float_linear_init_mas_UUSIG(float FI0,float F_start, float F_stop, int N_k, int N_fi, float fi_degspan,floatComplex *uusig)
 {

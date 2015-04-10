@@ -45,27 +45,25 @@ class cuda_calculate_class
 public:
 	const char* cuda_get_error();
 	const char* cuda_get_error_str();
-	bool SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin);
+	bool SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin,bool Device);
 	bool CalcZ2Z(int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayout);
 	cuda_calculate_class();
     double get_xstart();
     double get_xstop();
     double get_zstart();
     double get_zstop();
-
-
 	float f_get_xstart();
     float f_get_xstop();
     float f_get_zstart();
     float f_get_zstop();
-	bool SetArrayC2C(int nCols,int nRows,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin);
+	bool SetArrayC2C(int nCols,int nRows,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin,bool Device);
 	bool CalcC2C(int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayout);
-	bool Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin,floatComplex *zArrayout);
-
+	
 private:
 	bool Cuda_ConvertZ2Z(int nCols,int nRows,int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin,doubleComplex *zArrayout);
-		double round(double number);
-		float float_round(float number);
+    bool Cuda_ConvertC2C(int nCols,int nRows,int N_1out, int N_2out,float dFStart, float dFStop, float dAzStart, float dAzStop,floatComplex *zArrayin,floatComplex *zArrayout);
+	double round(double number);
+	float float_round(float number);
 
 
 	bool double_init_plan(int N_1out,int N_2out);
