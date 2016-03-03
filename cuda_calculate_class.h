@@ -45,7 +45,7 @@ class cuda_calculate_class
 public:
 	const char* cuda_get_error();
 	const char* cuda_get_error_str();
-	bool SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin,bool Device);
+	bool SetArrayZ2Z(int nCols,int nRows,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayin,bool Device);//true GeForce
 	bool CalcZ2Z(int N_1out, int N_2out,double dFStart, double dFStop, double dAzStart, double dAzStop,doubleComplex *zArrayout);
 	cuda_calculate_class();
     double get_xstart();
